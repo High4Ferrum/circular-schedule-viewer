@@ -38,19 +38,28 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        /* Input row styling for responsiveness */
+        /* Base input row styling */
         .event-row-input {
             padding: 0.5rem; /* 8px */
             border: 1px solid #d1d5db; /* Tailwind gray-300 */
             border-radius: 0.375rem; /* 6px */
             font-size: 0.875rem; /* 14px */
+            box-sizing: border-box; /* Ensure padding and border are included in width */
         }
         .event-row-color-input {
-            min-width: 40px; /* Ensure color picker has some width */
+            min-width: 30px; /* Ensure color picker has some width, reduced for mobile */
             height: 38px; /* Match height of other inputs approx */
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 2px;
+            box-sizing: border-box;
+        }
+        /* Ensure inputs don't overflow their percentage width on small screens */
+        .event-row input[type="time"], 
+        .event-row input[type="number"] {
+            -webkit-appearance: none; /* Optional: for better control over styling */
+            -moz-appearance: none;
+            appearance: none;
         }
 
     </style>
@@ -65,7 +74,7 @@
         <div class="mb-6">
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Data:</label>
-                <div id="eventRowsContainer" class="mb-4 space-y-3">
+                <div id="eventRowsContainer" class="mb-4 space-y-2 md:space-y-3">
                     <!-- Event rows will be dynamically added here -->
                 </div>
                 <button id="addEventRowBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-all duration-150 ease-in-out text-sm">
@@ -140,39 +149,38 @@
         // --- Event Row Management ---
         function createEventRow(eventData = {}) {
             const row = document.createElement('div');
-            // Responsive classes for event row: stack on mobile, row on medium+
-            row.className = 'event-row flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200';
+            // Always horizontal, responsive gap and padding
+            row.className = 'event-row flex flex-row items-center gap-1 md:gap-2 p-1 md:p-2 rounded-md bg-gray-50 border border-gray-200';
 
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
-            nameInput.placeholder = 'Event Name';
+            nameInput.placeholder = 'Event'; // Shorter placeholder for mobile
             nameInput.value = eventData.name || '';
-            nameInput.className = 'event-row-input w-full md:flex-grow event-name-input';
+            nameInput.className = 'event-row-input w-[60%] md:flex-grow event-name-input';
 
             const timeInput = document.createElement('input');
             timeInput.type = 'time';
             timeInput.value = eventData.timeStr || '00:00';
-            // Tailwind classes for width control on different screen sizes
-            timeInput.className = 'event-row-input w-full md:w-auto event-time-input';
+            timeInput.className = 'event-row-input w-[12.5%] md:w-auto event-time-input text-xs md:text-sm'; // Smaller text on mobile
             
             const durationInput = document.createElement('input');
             durationInput.type = 'number';
-            durationInput.placeholder = 'Duration (min)';
+            durationInput.placeholder = 'Dur'; // Shorter placeholder
             durationInput.min = '1';
             durationInput.value = eventData.duration || '';
-            durationInput.className = 'event-row-input w-full md:w-28 event-duration-input'; // Specific width for duration
+            durationInput.className = 'event-row-input w-[12.5%] md:w-28 event-duration-input text-xs md:text-sm'; // Smaller text on mobile
 
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
             colorInput.value = eventData.color || '#64B5F6';
-            // Tailwind classes for width control, ensure it's not too wide on mobile
-            colorInput.className = 'event-row-color-input w-full md:w-auto event-color-input';
+            colorInput.className = 'event-row-color-input w-[10%] md:w-auto event-color-input';
             colorInput.title = 'Select event color';
 
             const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = 'Delete';
-            // Tailwind classes for button styling and width
-            deleteBtn.className = 'w-full md:w-auto p-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm delete-row-btn';
+            deleteBtn.innerHTML = '&#x1F5D1;'; // Trash can icon
+            deleteBtn.title = 'Delete event';
+            // Adjusted width to flex for remaining space, responsive padding and text size
+            deleteBtn.className = 'flex-shrink-0 p-1.5 md:p-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm md:text-base delete-row-btn w-[5%] md:w-auto flex items-center justify-center';
             deleteBtn.onclick = () => row.remove();
 
             row.appendChild(nameInput);
@@ -314,7 +322,7 @@
             drawnLabelInfo.length = 0; 
 
             const MAX_LABEL_ADJUST_ATTEMPTS = 10;
-            const LABEL_RADIAL_PUSH_STEP = parseInt(EVENT_NAME_FONT_SIZE) * 1.0; // Push out by 100% of font height
+            const LABEL_RADIAL_PUSH_STEP = parseInt(EVENT_NAME_FONT_SIZE) * 1.0; 
 
             events.forEach(event => {
                 const startAngle = minutesToAngle(event.startMinutes);
@@ -356,7 +364,7 @@
                     isOverlapping = false;
                     let proposedNameX = CENTER_X + currentLabelRadius * Math.cos(midAngle);
                     let proposedNameY = CENTER_Y + currentLabelRadius * Math.sin(midAngle);
-                    const labelOffset = 8; // Slightly increased offset
+                    const labelOffset = 8; 
                     if (midAngle > -Math.PI / 2 && midAngle <= Math.PI / 2) { 
                         ctx.textAlign = 'left'; proposedNameX += labelOffset;
                     } else { 
@@ -365,7 +373,7 @@
                     if (Math.abs(Math.sin(midAngle)) > 0.95) ctx.textBaseline = 'middle';
                     else if (Math.sin(midAngle) > 0) { ctx.textBaseline = 'top'; proposedNameY += labelOffset / 2; }
                     else { ctx.textBaseline = 'bottom'; proposedNameY -= labelOffset / 2;}
-                    const edgeMargin = 10; // Reduced edge margin as canvas scales
+                    const edgeMargin = 10; 
                     const textWidth = ctx.measureText(event.name).width;
                     if (ctx.textAlign === 'right' && proposedNameX - textWidth < edgeMargin) {
                         finalNameX = edgeMargin + textWidth; 
@@ -405,7 +413,7 @@
         }
         
         function calculateRadii() {
-            const canvasPadding = 65; // Increased padding further for more label room
+            const canvasPadding = 65; 
             const circleMaxRadius = Math.min(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2) - canvasPadding;
             R_EVENT_NAME_LABEL_BASE = circleMaxRadius; 
             R_CLOCK_NUMBER = R_EVENT_NAME_LABEL_BASE - 40; 
@@ -443,7 +451,6 @@
             }
         }
 
-        // --- Download Image Functionality ---
         downloadImageBtn.addEventListener('click', function() {
             const canvas = document.getElementById('scheduleCanvas');
             try {
@@ -451,9 +458,9 @@
                 const link = document.createElement('a');
                 link.href = image;
                 link.download = 'circular-schedule.png';
-                document.body.appendChild(link); // Required for Firefox to trigger download
+                document.body.appendChild(link); 
                 link.click();
-                document.body.removeChild(link); // Clean up the temporary link
+                document.body.removeChild(link); 
                 showMessage('Image download started!', 'success');
             } catch (e) {
                 console.error("Error downloading canvas image:", e);
