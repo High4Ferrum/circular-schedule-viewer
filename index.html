@@ -29,86 +29,70 @@
         .message-box.error { background-color: #EF4444; }
         .message-box.info { background-color: #3B82F6; }
 
-        canvas {
-            display: block;
+        canvas#scheduleCanvas { /* Apply to the specific canvas */
+            max-width: 100%; /* Ensure canvas scales down */
+            height: auto;   /* Maintain aspect ratio */
+            display: block; /* Remove extra space below */
             margin: 20px auto;
             background-color: #ffffff;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        .event-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem; /* 8px */
-            margin-bottom: 0.5rem; /* 8px */
-            padding: 0.5rem; /* 8px */
-            border-radius: 0.375rem; /* 6px */
-            background-color: #f9fafb; /* Tailwind gray-50 */
-            border: 1px solid #e5e7eb; /* Tailwind gray-200 */
-        }
-        .event-row input[type="text"],
-        .event-row input[type="time"],
-        .event-row input[type="number"] {
+        /* Input row styling for responsiveness */
+        .event-row-input {
             padding: 0.5rem; /* 8px */
             border: 1px solid #d1d5db; /* Tailwind gray-300 */
             border-radius: 0.375rem; /* 6px */
             font-size: 0.875rem; /* 14px */
-            flex-grow: 1;
         }
-        .event-row input[type="color"] {
-            min-width: 40px;
-            height: 38px; /* Match height of other inputs */
+        .event-row-color-input {
+            min-width: 40px; /* Ensure color picker has some width */
+            height: 38px; /* Match height of other inputs approx */
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
-            padding: 2px; /* Small padding for the color picker itself */
+            padding: 2px;
         }
-        .event-row .delete-row-btn {
-            padding: 0.5rem 0.75rem;
-            background-color: #ef4444; /* Tailwind red-500 */
-            color: white;
-            border: none;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-        .event-row .delete-row-btn:hover {
-            background-color: #dc2626; /* Tailwind red-600 */
-        }
+
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl">
+    <div class="max-w-5xl mx-auto bg-white p-4 sm:p-6 md:p-8 rounded-xl shadow-2xl">
         <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-gray-800">Circular Daily Schedule</h1>
-            <p class="text-gray-500 mt-1">Visualize your day at a glance.</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Circular Daily Schedule</h1>
+            <p class="text-gray-500 mt-1 text-sm sm:text-base">Visualize your day at a glance.</p>
         </header>
 
         <div class="mb-6">
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Data:</label>
-                <div id="eventRowsContainer" class="mb-4">
+                <div id="eventRowsContainer" class="mb-4 space-y-3">
                     <!-- Event rows will be dynamically added here -->
                 </div>
-                <button id="addEventRowBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-all duration-150 ease-in-out">
+                <button id="addEventRowBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-all duration-150 ease-in-out text-sm">
                     Add Event
                 </button>
             </div>
-            <div class="flex flex-col items-center justify-center">
+            <div class="w-full flex flex-col items-center justify-center"> <!-- Ensure canvas container takes full width -->
                  <canvas id="scheduleCanvas" width="1000" height="750"></canvas>
             </div>
         </div>
 
-        <button id="generateButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-md shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            Generate Schedule
-        </button>
+        <div class="space-y-3">
+            <button id="generateButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-md shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Generate Schedule
+            </button>
+            <button id="downloadImageBtn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-md shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">
+                Download Schedule Image
+            </button>
+        </div>
 
         <div id="messageBox" class="message-box"></div>
     </div>
 
     <script>
         // --- Constants and Configuration ---
-        const CANVAS_WIDTH = 1000;
-        const CANVAS_HEIGHT = 750;
+        const CANVAS_WIDTH = 1000; // Internal resolution width
+        const CANVAS_HEIGHT = 750; // Internal resolution height
         const CENTER_X = CANVAS_WIDTH / 2;
         const CENTER_Y = CANVAS_HEIGHT / 2;
 
@@ -118,9 +102,9 @@
         const CLOCK_HOUR_FONT_SIZE = '11px'; 
         const EVENT_DURATION_FONT_SIZE = '10px'; 
         const EVENT_NAME_FONT_SIZE = '11px'; 
-        const LABEL_LINE_COLOR = '#9CA3AF'; // Tailwind gray-400 for connection lines
+        const LABEL_LINE_COLOR = '#9CA3AF'; 
         
-        let R_EVENT_NAME_LABEL_BASE; // Base radius for labels, they can be pushed out from here
+        let R_EVENT_NAME_LABEL_BASE;
         let R_CLOCK_NUMBER;
         let R_CLOCK_TICK_OUTER;
         let R_CLOCK_TICK_INNER;
@@ -128,7 +112,8 @@
 
         const eventRowsContainer = document.getElementById('eventRowsContainer');
         const addEventRowBtn = document.getElementById('addEventRowBtn');
-        const drawnLabelInfo = []; // Stores info about placed labels to check for overlaps
+        const downloadImageBtn = document.getElementById('downloadImageBtn');
+        const drawnLabelInfo = []; 
 
         // --- Utility Functions ---
         function showMessage(message, type = 'info') {
@@ -155,35 +140,39 @@
         // --- Event Row Management ---
         function createEventRow(eventData = {}) {
             const row = document.createElement('div');
-            row.className = 'event-row';
+            // Responsive classes for event row: stack on mobile, row on medium+
+            row.className = 'event-row flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200';
 
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
             nameInput.placeholder = 'Event Name';
             nameInput.value = eventData.name || '';
-            nameInput.className = 'event-name-input';
+            nameInput.className = 'event-row-input w-full md:flex-grow event-name-input';
 
             const timeInput = document.createElement('input');
             timeInput.type = 'time';
             timeInput.value = eventData.timeStr || '00:00';
-            timeInput.className = 'event-time-input';
+            // Tailwind classes for width control on different screen sizes
+            timeInput.className = 'event-row-input w-full md:w-auto event-time-input';
             
             const durationInput = document.createElement('input');
             durationInput.type = 'number';
             durationInput.placeholder = 'Duration (min)';
             durationInput.min = '1';
             durationInput.value = eventData.duration || '';
-            durationInput.className = 'event-duration-input';
+            durationInput.className = 'event-row-input w-full md:w-28 event-duration-input'; // Specific width for duration
 
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
             colorInput.value = eventData.color || '#64B5F6';
-            colorInput.className = 'event-color-input';
+            // Tailwind classes for width control, ensure it's not too wide on mobile
+            colorInput.className = 'event-row-color-input w-full md:w-auto event-color-input';
             colorInput.title = 'Select event color';
 
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = 'Delete';
-            deleteBtn.className = 'delete-row-btn';
+            // Tailwind classes for button styling and width
+            deleteBtn.className = 'w-full md:w-auto p-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm delete-row-btn';
             deleteBtn.onclick = () => row.remove();
 
             row.appendChild(nameInput);
@@ -277,30 +266,22 @@
         function getLabelBoundingBox(x, y, text, ctx) {
             const metrics = ctx.measureText(text);
             const textWidth = metrics.width;
-            // Approximate height using font size, more accurate would be metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
             const textHeight = parseInt(ctx.font.match(/(\d+)px/)[1]) || parseInt(EVENT_NAME_FONT_SIZE); 
-
             let rectX = x;
-            let rectY = y - textHeight / 2; // Assuming textBaseline = 'middle' for bounding box calculation
-
-            if (ctx.textAlign === 'right') {
-                rectX = x - textWidth;
-            } else if (ctx.textAlign === 'center') {
-                rectX = x - textWidth / 2;
-            }
-            // Adjust Y based on textBaseline (more complex if not 'middle' for the rect calc)
+            let rectY = y - textHeight / 2; 
+            if (ctx.textAlign === 'right') rectX = x - textWidth;
+            else if (ctx.textAlign === 'center') rectX = x - textWidth / 2;
             if (ctx.textBaseline === 'top') rectY = y;
             else if (ctx.textBaseline === 'bottom') rectY = y - textHeight;
-
-
-            return { x: rectX, y: rectY, width: textWidth, height: textHeight };
+            return { x: rectX, y: rectY, width: textWidth, height: textHeight + 4 /* add small padding */ };
         }
 
         function doRectsOverlap(rect1, rect2) {
-            return !(rect1.x + rect1.width < rect2.x ||
-                       rect1.x > rect2.x + rect2.width ||
-                       rect1.y + rect1.height < rect2.y ||
-                       rect1.y > rect2.y + rect2.height);
+            const buffer = 2; // Small buffer to prevent labels from touching
+            return !(rect1.x + rect1.width + buffer < rect2.x ||
+                       rect1.x > rect2.x + rect2.width + buffer ||
+                       rect1.y + rect1.height + buffer < rect2.y ||
+                       rect1.y > rect2.y + rect2.height + buffer);
         }
 
         function drawClockFace(ctx) {
@@ -308,7 +289,6 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#374151'; 
-
             for (let i = 0; i < 24; i++) {
                 const angle = minutesToAngle(i * 60);
                 const isMajorHour = (i % 3 === 0);
@@ -331,10 +311,10 @@
         function drawEvents(ctx, events) {
             if (!events) return;
             ctx.save();
-            drawnLabelInfo.length = 0; // Clear previously drawn label info
+            drawnLabelInfo.length = 0; 
 
             const MAX_LABEL_ADJUST_ATTEMPTS = 10;
-            const LABEL_RADIAL_PUSH_STEP = parseInt(EVENT_NAME_FONT_SIZE) * 0.8; // Push out by 80% of font height
+            const LABEL_RADIAL_PUSH_STEP = parseInt(EVENT_NAME_FONT_SIZE) * 1.0; // Push out by 100% of font height
 
             events.forEach(event => {
                 const startAngle = minutesToAngle(event.startMinutes);
@@ -345,22 +325,16 @@
                     console.warn(`Event "${event.name}" is on too deep a layer. Skipping.`);
                     return;
                 }
-
-                // Draw event arc
                 ctx.beginPath();
                 ctx.arc(CENTER_X, CENTER_Y, eventVisualRadius, startAngle, endAngle);
                 ctx.lineWidth = EVENT_ARC_THICKNESS;
                 ctx.strokeStyle = event.color === 'transparent' ? 'rgba(0,0,0,0.05)' : event.color;
                 ctx.stroke();
-
-                // Calculate midpoint angle for text and labels
                 let midAngle = (startAngle + endAngle) / 2;
                 if (endAngle < startAngle) { 
                     midAngle = (startAngle + endAngle + 2 * Math.PI) / 2;
                     if (midAngle > Math.PI * 2) midAngle -= Math.PI * 2; 
                 }
-
-                // Draw duration text
                 ctx.font = `bold ${EVENT_DURATION_FONT_SIZE} Inter`;
                 ctx.fillStyle = '#FFFFFF'; 
                 ctx.textAlign = 'center';
@@ -372,23 +346,17 @@
                 ctx.shadowBlur = 4;
                 ctx.fillText(`${event.duration}m`, durationTextX, durationTextY);
                 ctx.restore();
-
-                // --- Event Name Label Placement and Connection Line ---
                 ctx.font = `500 ${EVENT_NAME_FONT_SIZE} Inter`; 
                 ctx.fillStyle = '#1F2937'; 
-                
                 let currentLabelRadius = R_EVENT_NAME_LABEL_BASE;
                 let finalNameX, finalNameY, labelRect;
                 let attempts = 0;
                 let isOverlapping;
-
                 do {
                     isOverlapping = false;
-                    // Calculate proposed label position
                     let proposedNameX = CENTER_X + currentLabelRadius * Math.cos(midAngle);
                     let proposedNameY = CENTER_Y + currentLabelRadius * Math.sin(midAngle);
-                    const labelOffset = 7; 
-
+                    const labelOffset = 8; // Slightly increased offset
                     if (midAngle > -Math.PI / 2 && midAngle <= Math.PI / 2) { 
                         ctx.textAlign = 'left'; proposedNameX += labelOffset;
                     } else { 
@@ -397,64 +365,35 @@
                     if (Math.abs(Math.sin(midAngle)) > 0.95) ctx.textBaseline = 'middle';
                     else if (Math.sin(midAngle) > 0) { ctx.textBaseline = 'top'; proposedNameY += labelOffset / 2; }
                     else { ctx.textBaseline = 'bottom'; proposedNameY -= labelOffset / 2;}
-                    
-                    const edgeMargin = 15; // Keep labels from canvas edge
+                    const edgeMargin = 10; // Reduced edge margin as canvas scales
                     const textWidth = ctx.measureText(event.name).width;
-                    
-                    // Tentative final positions before edge check
-                    finalNameX = proposedNameX;
-                    finalNameY = proposedNameY;
-
-                    // Adjust if too close to canvas horizontal edges
-                    if (ctx.textAlign === 'left' && finalNameX + textWidth > CANVAS_WIDTH - edgeMargin) {
-                        finalNameX = CANVAS_WIDTH - edgeMargin - textWidth;
-                    } else if (ctx.textAlign === 'right' && finalNameX - textWidth < edgeMargin) {
-                        finalNameX = edgeMargin + textWidth; // This should be finalNameX = edgeMargin; and then text is drawn from there
-                    }
-                     if (ctx.textAlign === 'right' && proposedNameX - textWidth < edgeMargin) {
-                        finalNameX = edgeMargin + textWidth; // Corrected for right align
+                    if (ctx.textAlign === 'right' && proposedNameX - textWidth < edgeMargin) {
+                        finalNameX = edgeMargin + textWidth; 
                     } else if (ctx.textAlign === 'left' && proposedNameX + textWidth > CANVAS_WIDTH - edgeMargin) {
                         finalNameX = CANVAS_WIDTH - edgeMargin - textWidth;
                     } else {
                         finalNameX = proposedNameX;
                     }
-                    finalNameY = Math.max(edgeMargin, Math.min(CANVAS_HEIGHT - edgeMargin, proposedNameY));
-
-
+                    finalNameY = Math.max(edgeMargin + (parseInt(EVENT_NAME_FONT_SIZE)/2) , Math.min(CANVAS_HEIGHT - edgeMargin - (parseInt(EVENT_NAME_FONT_SIZE)/2), proposedNameY));
                     labelRect = getLabelBoundingBox(finalNameX, finalNameY, event.name, ctx);
-
-                    // Check for overlap with previously drawn labels
                     for (const prevLabel of drawnLabelInfo) {
                         if (doRectsOverlap(labelRect, prevLabel.rect)) {
                             isOverlapping = true;
-                            currentLabelRadius += LABEL_RADIAL_PUSH_STEP; // Push label radially outwards
+                            currentLabelRadius += LABEL_RADIAL_PUSH_STEP; 
                             break;
                         }
                     }
                     attempts++;
                 } while (isOverlapping && attempts < MAX_LABEL_ADJUST_ATTEMPTS);
-                
-                // Draw the label at its final position
                 ctx.fillText(event.name, finalNameX, finalNameY);
-                drawnLabelInfo.push({ rect: labelRect }); // Store its bounding box
-
-                // Draw connection line
-                const lineToX = CENTER_X + (eventVisualRadius + EVENT_ARC_THICKNESS / 2 - 2) * Math.cos(midAngle); // Point on outer edge of arc
+                drawnLabelInfo.push({ rect: labelRect, angle: midAngle }); 
+                const lineToX = CENTER_X + (eventVisualRadius + EVENT_ARC_THICKNESS / 2 - 2) * Math.cos(midAngle); 
                 const lineToY = CENTER_Y + (eventVisualRadius + EVENT_ARC_THICKNESS / 2 - 2) * Math.sin(midAngle);
-                
                 let lineFromX = finalNameX;
-                // Adjust lineFromX based on textAlign for better connection point on text
-                if (ctx.textAlign === 'left') {
-                    lineFromX = labelRect.x; // Start from left edge of text
-                } else if (ctx.textAlign === 'right') {
-                    lineFromX = labelRect.x + labelRect.width; // Start from right edge of text
-                } else { // center
-                     lineFromX = labelRect.x + labelRect.width / 2;
-                }
-                // For Y, use the vertical center of the label's bounding box
+                if (ctx.textAlign === 'left') lineFromX = labelRect.x; 
+                else if (ctx.textAlign === 'right') lineFromX = labelRect.x + labelRect.width; 
+                else lineFromX = labelRect.x + labelRect.width / 2;
                 const lineFromY = labelRect.y + labelRect.height / 2;
-
-
                 ctx.beginPath();
                 ctx.moveTo(lineFromX, lineFromY);
                 ctx.lineTo(lineToX, lineToY);
@@ -466,19 +405,15 @@
         }
         
         function calculateRadii() {
-            const canvasPadding = 60; // Increased padding to give more room for pushed labels
+            const canvasPadding = 65; // Increased padding further for more label room
             const circleMaxRadius = Math.min(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2) - canvasPadding;
-
-            R_EVENT_NAME_LABEL_BASE = circleMaxRadius; // Base radius for labels
-            R_CLOCK_NUMBER = R_EVENT_NAME_LABEL_BASE - 40; // More space for labels before clock numbers
+            R_EVENT_NAME_LABEL_BASE = circleMaxRadius; 
+            R_CLOCK_NUMBER = R_EVENT_NAME_LABEL_BASE - 40; 
             R_CLOCK_TICK_OUTER = R_CLOCK_NUMBER - 15;
             R_CLOCK_TICK_INNER = R_CLOCK_TICK_OUTER - 10;
-            
-            const spaceBetweenClockAndEvents = 18; // More space
+            const spaceBetweenClockAndEvents = 18; 
             const maxEventOuterEdge = R_CLOCK_TICK_INNER - spaceBetweenClockAndEvents;
-            
             R_EVENT_LAYER_0_CENTER = maxEventOuterEdge - (EVENT_ARC_THICKNESS / 2);
-
             if (R_EVENT_LAYER_0_CENTER < EVENT_ARC_THICKNESS * 2.5) { 
                 console.warn("Calculated radii result in small space for event arcs.");
                 R_EVENT_LAYER_0_CENTER = Math.max(EVENT_ARC_THICKNESS * 2.5, EVENT_ARC_THICKNESS + EVENT_ARC_PADDING); 
@@ -489,9 +424,7 @@
             const canvas = document.getElementById('scheduleCanvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            
             calculateRadii(); 
-
             const events = parseScheduleDataFromRows();
             if (!events) { 
                 drawClockFace(ctx); 
@@ -502,16 +435,31 @@
                  drawClockFace(ctx); 
                  return;
             }
-
             const layeredEvents = assignLayersToEvents(events);
-
             drawClockFace(ctx);
             drawEvents(ctx, layeredEvents);
-            
             if(layeredEvents.length > 0 && !document.querySelector('.message-box[style*="display: block"]')) {
                 showMessage("Schedule generated successfully!", "success");
             }
         }
+
+        // --- Download Image Functionality ---
+        downloadImageBtn.addEventListener('click', function() {
+            const canvas = document.getElementById('scheduleCanvas');
+            try {
+                const image = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = 'circular-schedule.png';
+                document.body.appendChild(link); // Required for Firefox to trigger download
+                link.click();
+                document.body.removeChild(link); // Clean up the temporary link
+                showMessage('Image download started!', 'success');
+            } catch (e) {
+                console.error("Error downloading canvas image:", e);
+                showMessage('Could not download image. See console for details.', 'error');
+            }
+        });
 
         document.getElementById('generateButton').addEventListener('click', drawAll);
 
@@ -525,7 +473,6 @@
                 { name: "Gym Session", timeStr: "17:30", duration: "75", color: "#FF8A65" },
                 { name: "Dinner", timeStr: "19:45", duration: "60", color: "#F06292" },
                 { name: "Relax/Read", timeStr: "21:00", duration: "90", color: "#7986CB" },
-                // Add a few potentially overlapping events for testing
                 { name: "Quick Call", timeStr: "10:00", duration: "30", color: "#4DD0E1" },
                 { name: "Follow-up Email", timeStr: "10:15", duration: "45", color: "#81C784" },
             ];
