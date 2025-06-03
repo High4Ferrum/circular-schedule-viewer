@@ -29,37 +29,52 @@
         .message-box.error { background-color: #EF4444; }
         .message-box.info { background-color: #3B82F6; }
 
-        canvas#scheduleCanvas { /* Apply to the specific canvas */
-            max-width: 100%; /* Ensure canvas scales down */
-            height: auto;   /* Maintain aspect ratio */
-            display: block; /* Remove extra space below */
+        canvas#scheduleCanvas {
+            max-width: 100%;
+            height: auto;  
+            display: block; 
             margin: 20px auto;
             background-color: #ffffff;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        /* Base input row styling */
         .event-row-input {
-            padding: 0.5rem; /* 8px */
-            border: 1px solid #d1d5db; /* Tailwind gray-300 */
-            border-radius: 0.375rem; /* 6px */
-            font-size: 0.875rem; /* 14px */
-            box-sizing: border-box; /* Ensure padding and border are included in width */
+            padding: 0.5rem; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.375rem; 
+            font-size: 0.875rem; 
+            box-sizing: border-box; 
         }
         .event-row-color-input {
-            min-width: 30px; /* Ensure color picker has some width, reduced for mobile */
-            height: 38px; /* Match height of other inputs approx */
+            min-width: 30px; 
+            height: 38px; 
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 2px;
             box-sizing: border-box;
         }
-        /* Ensure inputs don't overflow their percentage width on small screens */
         .event-row input[type="time"], 
         .event-row input[type="number"] {
-            -webkit-appearance: none; /* Optional: for better control over styling */
+            -webkit-appearance: none; 
             -moz-appearance: none;
             appearance: none;
+        }
+        .drag-handle {
+            cursor: grab;
+            padding-right: 0.5rem; /* 8px */
+            color: #9ca3af; /* gray-400 */
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        .dragging {
+            opacity: 0.5;
+            background-color: #e0e7ff; /* indigo-100 for visual feedback */
+        }
+        .drag-over-indicator {
+            height: 2px;
+            background-color: #6366f1; /* indigo-500 */
+            margin: 2px 0;
         }
 
     </style>
@@ -73,7 +88,7 @@
 
         <div class="mb-6">
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Data:</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Data: (Drag rows to reorder)</label>
                 <div id="eventRowsContainer" class="mb-4 space-y-2 md:space-y-3">
                     <!-- Event rows will be dynamically added here -->
                 </div>
@@ -81,7 +96,7 @@
                     Add Event
                 </button>
             </div>
-            <div class="w-full flex flex-col items-center justify-center"> <!-- Ensure canvas container takes full width -->
+            <div class="w-full flex flex-col items-center justify-center">
                  <canvas id="scheduleCanvas" width="1000" height="750"></canvas>
             </div>
         </div>
@@ -100,14 +115,12 @@
 
     <script>
         // --- Constants and Configuration ---
-        const CANVAS_WIDTH = 1000; // Internal resolution width
-        const CANVAS_HEIGHT = 750; // Internal resolution height
+        const CANVAS_WIDTH = 1000; 
+        const CANVAS_HEIGHT = 750; 
         const CENTER_X = CANVAS_WIDTH / 2;
         const CENTER_Y = CANVAS_HEIGHT / 2;
-
         const EVENT_ARC_THICKNESS = 27; 
         const EVENT_ARC_PADDING = 5;    
-
         const CLOCK_HOUR_FONT_SIZE = '11px'; 
         const EVENT_DURATION_FONT_SIZE = '10px'; 
         const EVENT_NAME_FONT_SIZE = '11px'; 
@@ -123,6 +136,7 @@
         const addEventRowBtn = document.getElementById('addEventRowBtn');
         const downloadImageBtn = document.getElementById('downloadImageBtn');
         const drawnLabelInfo = []; 
+        let draggedItem = null; // To store the element being dragged
 
         // --- Utility Functions ---
         function showMessage(message, type = 'info') {
@@ -149,26 +163,33 @@
         // --- Event Row Management ---
         function createEventRow(eventData = {}) {
             const row = document.createElement('div');
-            // Always horizontal, responsive gap and padding
             row.className = 'event-row flex flex-row items-center gap-1 md:gap-2 p-1 md:p-2 rounded-md bg-gray-50 border border-gray-200';
+            row.draggable = true; // Make the entire row draggable
+
+            // Drag Handle
+            const dragHandle = document.createElement('div');
+            dragHandle.className = 'drag-handle flex-shrink-0';
+            dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>`;
+            row.appendChild(dragHandle);
+
 
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
-            nameInput.placeholder = 'Event'; // Shorter placeholder for mobile
+            nameInput.placeholder = 'Event'; 
             nameInput.value = eventData.name || '';
-            nameInput.className = 'event-row-input w-[55%] md:flex-grow event-name-input';
+            nameInput.className = 'event-row-input w-[52.75%] md:flex-grow event-name-input';
 
             const timeInput = document.createElement('input');
             timeInput.type = 'time';
             timeInput.value = eventData.timeStr || '00:00';
-            timeInput.className = 'event-row-input w-[17.5%] md:w-auto event-time-input text-xs md:text-sm'; // Smaller text on mobile
+            timeInput.className = 'event-row-input w-[20%] md:w-auto event-time-input text-xs md:text-sm'; 
             
             const durationInput = document.createElement('input');
             durationInput.type = 'number';
-            durationInput.placeholder = 'Dur'; // Shorter placeholder
+            durationInput.placeholder = 'Dur'; 
             durationInput.min = '1';
             durationInput.value = eventData.duration || '';
-            durationInput.className = 'event-row-input w-[12.5%] md:w-28 event-duration-input text-xs md:text-sm'; // Smaller text on mobile
+            durationInput.className = 'event-row-input w-[12.5%] md:w-28 event-duration-input text-xs md:text-sm'; 
 
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
@@ -177,9 +198,8 @@
             colorInput.title = 'Select event color';
 
             const deleteBtn = document.createElement('button');
-            deleteBtn.innerHTML = '&#x1F5D1;'; // Trash can icon
+            deleteBtn.innerHTML = '&#x1F5D1;'; 
             deleteBtn.title = 'Delete event';
-            // Adjusted width to flex for remaining space, responsive padding and text size
             deleteBtn.className = 'flex-shrink-0 p-1.5 md:p-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm md:text-base delete-row-btn w-[5%] md:w-auto flex items-center justify-center';
             deleteBtn.onclick = () => row.remove();
 
@@ -190,9 +210,109 @@
             row.appendChild(deleteBtn);
             
             eventRowsContainer.appendChild(row);
+
+            // Drag and Drop Event Listeners for the row
+            row.addEventListener('dragstart', handleDragStart);
+            row.addEventListener('dragend', handleDragEnd);
         }
+        
+        // Drag and Drop Handlers for container
+        eventRowsContainer.addEventListener('dragover', handleDragOver);
+        eventRowsContainer.addEventListener('drop', handleDrop);
+
 
         addEventRowBtn.addEventListener('click', () => createEventRow());
+
+        // --- Drag and Drop Logic ---
+        function handleDragStart(e) {
+            draggedItem = e.target.closest('.event-row'); // Get the row element
+            if (!draggedItem) return;
+            // setTimeout is used to allow the browser to create the drag image before applying the class
+            setTimeout(() => {
+                if(draggedItem) draggedItem.classList.add('dragging');
+            }, 0);
+            e.dataTransfer.effectAllowed = 'move';
+            // Optional: Set drag data if needed, though not strictly for reordering within same list
+            // e.dataTransfer.setData('text/plain', draggedItem.querySelector('.event-name-input').value);
+        }
+
+        function handleDragEnd(e) {
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+            }
+            draggedItem = null;
+            // Remove any drag-over indicators
+            const indicators = eventRowsContainer.querySelectorAll('.drag-over-indicator');
+            indicators.forEach(indicator => indicator.remove());
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+
+            const overElement = e.target.closest('.event-row');
+            if (!overElement || overElement === draggedItem) return;
+
+            // Remove existing indicators
+            const indicators = eventRowsContainer.querySelectorAll('.drag-over-indicator');
+            indicators.forEach(indicator => indicator.remove());
+
+            const rect = overElement.getBoundingClientRect();
+            const midpointY = rect.top + rect.height / 2;
+            
+            let indicator = document.createElement('div');
+            indicator.className = 'drag-over-indicator';
+
+            if (e.clientY < midpointY) {
+                eventRowsContainer.insertBefore(indicator, overElement);
+            } else {
+                eventRowsContainer.insertBefore(indicator, overElement.nextSibling);
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            if (!draggedItem) return;
+
+            const overElement = e.target.closest('.event-row');
+            const indicators = eventRowsContainer.querySelectorAll('.drag-over-indicator');
+            let placed = false;
+
+            indicators.forEach(indicator => {
+                if (indicator.previousSibling === draggedItem && indicator.nextSibling === overElement) {
+                    // Dragged item is already in place relative to indicator
+                } else if (indicator.nextSibling === overElement) {
+                     eventRowsContainer.insertBefore(draggedItem, overElement);
+                     placed = true;
+                } else if (indicator.previousSibling === overElement) {
+                     eventRowsContainer.insertBefore(draggedItem, overElement.nextSibling);
+                     placed = true;
+                }
+                indicator.remove(); // Remove indicator after use
+            });
+            
+            // Fallback if indicator logic didn't place it (e.g., dropping on container itself or last item)
+            if (!placed) {
+                if (overElement && overElement !== draggedItem) {
+                     const rect = overElement.getBoundingClientRect();
+                     const midpointY = rect.top + rect.height / 2;
+                     if (e.clientY < midpointY) {
+                         eventRowsContainer.insertBefore(draggedItem, overElement);
+                     } else {
+                         eventRowsContainer.insertBefore(draggedItem, overElement.nextSibling);
+                     }
+                } else if (!overElement && draggedItem) { 
+                    // If dropping on the container but not over another row (e.g., empty space at bottom)
+                    eventRowsContainer.appendChild(draggedItem);
+                }
+            }
+
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+            }
+            draggedItem = null;
+        }
+
 
         // --- Parsing Logic ---
         function parseScheduleDataFromRows() {
@@ -235,6 +355,8 @@
             });
 
             if (parseError) return null;
+            // Sorting is still useful if user manually enters times out of order,
+            // but drag-and-drop primarily defines visual order influencing layering for identical start times.
             events.sort((a, b) => {
                 if (a.startMinutes !== b.startMinutes) return a.startMinutes - b.startMinutes;
                 return b.duration - a.duration; 
@@ -245,6 +367,10 @@
         function assignLayersToEvents(events) {
             if (!events || events.length === 0) return [];
             const layers = []; 
+            // Events are already in user-defined (or dragged) order.
+            // This order will now influence layering if start times are identical.
+            // The parseScheduleDataFromRows now respects DOM order.
+            // The sort in parseScheduleDataFromRows is a secondary sort for identical start times.
             events.forEach(event => {
                 let placed = false;
                 for (let i = 0; i < layers.length; i++) {
@@ -281,11 +407,11 @@
             else if (ctx.textAlign === 'center') rectX = x - textWidth / 2;
             if (ctx.textBaseline === 'top') rectY = y;
             else if (ctx.textBaseline === 'bottom') rectY = y - textHeight;
-            return { x: rectX, y: rectY, width: textWidth, height: textHeight + 4 /* add small padding */ };
+            return { x: rectX, y: rectY, width: textWidth, height: textHeight + 4 };
         }
 
         function doRectsOverlap(rect1, rect2) {
-            const buffer = 2; // Small buffer to prevent labels from touching
+            const buffer = 2; 
             return !(rect1.x + rect1.width + buffer < rect2.x ||
                        rect1.x > rect2.x + rect2.width + buffer ||
                        rect1.y + rect1.height + buffer < rect2.y ||
@@ -433,7 +559,7 @@
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             calculateRadii(); 
-            const events = parseScheduleDataFromRows();
+            const events = parseScheduleDataFromRows(); // This now respects DOM order
             if (!events) { 
                 drawClockFace(ctx); 
                 return;
@@ -443,7 +569,8 @@
                  drawClockFace(ctx); 
                  return;
             }
-            const layeredEvents = assignLayersToEvents(events);
+            // assignLayersToEvents will use the order from parseScheduleDataFromRows
+            const layeredEvents = assignLayersToEvents(events); 
             drawClockFace(ctx);
             drawEvents(ctx, layeredEvents);
             if(layeredEvents.length > 0 && !document.querySelector('.message-box[style*="display: block"]')) {
@@ -472,7 +599,7 @@
 
         function initializeDefaultRows() {
             const defaultSchedule = [
-                { name: "Sleep", timeStr: "23:00", duration: "480", color: "#345671" },
+                { name: "Sleep", timeStr: "00:00", duration: "420", color: "#345671" },
                 { name: "Morning Prep", timeStr: "07:00", duration: "60", color: "#FFB74D" },
                 { name: "Work Block 1", timeStr: "08:30", duration: "210", color: "#64B5F6" },
                 { name: "Lunch", timeStr: "12:00", duration: "60", color: "#FFF176" },
