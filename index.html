@@ -156,12 +156,12 @@
             nameInput.type = 'text';
             nameInput.placeholder = 'Event'; // Shorter placeholder for mobile
             nameInput.value = eventData.name || '';
-            nameInput.className = 'event-row-input w-[60%] md:flex-grow event-name-input';
+            nameInput.className = 'event-row-input w-[55%] md:flex-grow event-name-input';
 
             const timeInput = document.createElement('input');
             timeInput.type = 'time';
             timeInput.value = eventData.timeStr || '00:00';
-            timeInput.className = 'event-row-input w-[12.5%] md:w-auto event-time-input text-xs md:text-sm'; // Smaller text on mobile
+            timeInput.className = 'event-row-input w-[17.5%] md:w-auto event-time-input text-xs md:text-sm'; // Smaller text on mobile
             
             const durationInput = document.createElement('input');
             durationInput.type = 'number';
@@ -472,7 +472,7 @@
 
         function initializeDefaultRows() {
             const defaultSchedule = [
-                { name: "Sleep", timeStr: "00:00", duration: "420", color: "#345671" },
+                { name: "Sleep", timeStr: "23:00", duration: "480", color: "#345671" },
                 { name: "Morning Prep", timeStr: "07:00", duration: "60", color: "#FFB74D" },
                 { name: "Work Block 1", timeStr: "08:30", duration: "210", color: "#64B5F6" },
                 { name: "Lunch", timeStr: "12:00", duration: "60", color: "#FFF176" },
